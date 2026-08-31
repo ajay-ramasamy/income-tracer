@@ -23,9 +23,10 @@ public class ProfileController {
     private final ProfileService profileService;
 
     @PostMapping("/register")
-    public ResponseEntity<ProfileDTO> registerProfile(@RequestBody ProfileDTO profileDTO){
-        ProfileDTO registerProfileDTO = profileService.registerProfile(profileDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(registerProfileDTO);
+    public ResponseEntity<Map<String, Object>> registerProfile( @RequestBody ProfileDTO profileDTO) {
+
+        Map<String, Object> response = profileService.registerProfile(profileDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/activate")

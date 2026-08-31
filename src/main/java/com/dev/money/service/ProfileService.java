@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -11,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.dev.money.dto.AuthDTO;
 import com.dev.money.dto.ProfileDTO;
@@ -33,19 +35,46 @@ public class ProfileService {
     @Value("${app.activation.url}")
     private String activationURL;
 
-    public ProfileDTO registerProfile(ProfileDTO profileDTO) {
+    public Map<String, Object> registerProfile(ProfileDTO profileDTO) {
 
         if (profileRepository.findByEmail(profileDTO.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already registered");
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Email already registered"
+            );
         }
+
         ProfileEntity newProfile = toEntity(profileDTO);
         newProfile.setActivationToken(UUID.randomUUID().toString());
+
         newProfile = profileRepository.save(newProfile);
-        String activationLink =activationURL+"/api/v1.0/activate?token="+ newProfile.getActivationToken();
+
+        String activationLink = activationURL+"/api/v1.0/activate?token="+newProfile.getActivationToken();
+
         String subject = "Activate your account";
-        String body ="Click the following link to activate your account: "+ activationLink;
-        emailService.sendEmail(newProfile.getEmail(),subject,body);
-        return toDTO(newProfile);
+        String body =
+                "Click the following link to activate your account: "
+                + activationLink;
+
+        try {
+            emailService.sendEmail(
+                newProfile.getEmail(),
+                subject,
+                body
+            );
+
+            return Map.of(
+                "message", "Account created successfully. Activation email sent.",
+                "profile", toDTO(newProfile)
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of(
+                "message", "Account created successfully, but activation email could not be sent.",
+                "profile", toDTO(newProfile)
+            );
+        }
     }
 
     public ProfileEntity toEntity(ProfileDTO profileDTO) {
